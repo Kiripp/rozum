@@ -1,7 +1,7 @@
 import time
 from pulseapi import RobotPulse, pose, position, PulseApiException, SIG_HIGH, SIG_LOW, MT_LINEAR, output_action, \
-    SystemState
-from pdhttp.models import JointMotionParameters, LinearMotionParameters, InterpolationType
+    SystemState, create_box_obstacle, create_plane_obstacle, Point
+from pdhttp.models import JointMotionParameters, LinearMotionParameters, InterpolationType, tool_info, tool_shape
 from enum import Enum
 
 host = "http://10.10.10.20:8081"  # Replace with a valid robot address
@@ -44,7 +44,7 @@ joint_motion_parameters = JointMotionParameters(
 linear_motion_parameters = LinearMotionParameters(
     # interpolation_type=InterpolationType.BLEND,
     velocity=VELOCITY,
-    acceleration=ACCELERATION
+    acceleration=ACCELERATION,
 )
 
 class TCP_VELOCITY(Enum):
@@ -54,16 +54,42 @@ class TCP_VELOCITY(Enum):
     TEN_CM = 0.1,
     FIFTEEN_CM = 0.15
 
-def status_await_stop(robot_instance, asking_interval=0.1):
-    status = robot_instance.status()
-    while status == SystemState.MOTION:
-        time.sleep(asking_interval)
-        status = robot_instance.status()
+def get_tcp_position():
+    tcp_position = robot.get_position()
+    while True:
+        print("Current position: \n{}".format(tcp_position))
+        time.sleep(5)
 
+
+# Enter zero-gravity mode
+robot.zg_on()
+
+get_tcp_position()
+
+# Disable zero-gravity mode
+robot.zg_off()
 
 # uncomment to make infinity cycle
 # while True:
 #     try:
+
+
+# new_tool_shape = tool_shape(0.08, Point(0, 0, 0), Point(0.1, 0.2, 0.3), name="Jopa")
+# robot.change_tool_shape(new_tool_shape)
+# current_tool_info = robot.get_tool_info()
+# current_tool_shape = robot.get_tool_shape()
+# print("Current tool shape: \n{}".format(current_tool_shape))
+# print("Current tool info: \n{}".format(current_tool_info))
+
+# box = create_box_obstacle(
+#     Point(-0.2, )
+# )
+
+def status_await_stop(robot_instance, asking_interval=0.1):
+    await_status = robot_instance.status()
+    while await_status == SystemState.MOTION:
+        time.sleep(asking_interval)
+        await_status = robot_instance.status()
 
 i = 1
 
@@ -138,4 +164,8 @@ while i <= 1:  # The number of cycles
     except PulseApiException as e:
         # handle possible errors
         print("Exception {} while calling robot at {} ".format(e, robot.host))
+        status = robot.status()
+        failure = robot.status_failure()
+        if status == SystemState.EMERGENCY:
+            print("Robot is emergency. Error message: {}".format(failure))
         break
