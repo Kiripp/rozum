@@ -1,4 +1,5 @@
 import time
+
 from pulseapi import RobotPulse, pose, position, PulseApiException, SIG_HIGH, SIG_LOW, MT_LINEAR, output_action, \
     SystemState, create_box_obstacle, create_plane_obstacle, Point
 from pdhttp.models import JointMotionParameters, LinearMotionParameters, InterpolationType, tool_info, tool_shape
@@ -6,6 +7,17 @@ from enum import Enum
 
 host = "http://10.10.10.20:8081"  # Replace with a valid robot address
 robot = RobotPulse(host)  # Create an instance of the API wrapper class
+
+# def if_arm_initialized():
+#     try:
+#         robot.status()
+#     except PulseApiException:
+#         init_status = robot.status()
+#         init_failure = robot.status_failure()
+#         if init_status == SystemState.INITIALIZATION_FAILURE:
+#             print("Robot is failed to initialize. Error message: {}".format(init_failure))
+#
+# if_arm_initialized()
 
 # Create motion poses
 HOME_POSE = pose([0, -90, 0, -90, 0, 0])
@@ -62,12 +74,12 @@ def get_tcp_position():
 
 
 # Enter zero-gravity mode
-robot.zg_on()
-
-get_tcp_position()
-
-# Disable zero-gravity mode
-robot.zg_off()
+# robot.zg_on()
+#
+# get_tcp_position()
+#
+# # Disable zero-gravity mode
+# robot.zg_off()
 
 # uncomment to make infinity cycle
 # while True:
@@ -81,9 +93,10 @@ robot.zg_off()
 # print("Current tool shape: \n{}".format(current_tool_shape))
 # print("Current tool info: \n{}".format(current_tool_info))
 
-# box = create_box_obstacle(
-#     Point(-0.2, )
-# )
+box = create_box_obstacle(
+    Point(0.1, 0.20, 0.3), position((-0.2, 0.485, 0.4), (0, 0 ,0)), "wall-assemblerer"
+)
+robot.add_to_environment(box)
 
 def status_await_stop(robot_instance, asking_interval=0.1):
     await_status = robot_instance.status()
@@ -127,7 +140,8 @@ while i <= 1:  # The number of cycles
                            linear_motion_parameters)
         robot.set_position(TARGET_POSITIONS[2], # Moves straight up
                            joint_motion_parameters)
-        robot.await_stop()
+        # robot.await_stop()
+        status_await_stop(robot) # Checks arm status
 
         robot.set_position(TARGET_POSITIONS[3],  # Turns right non-linear
                            joint_motion_parameters)
@@ -146,8 +160,8 @@ while i <= 1:  # The number of cycles
         robot.await_stop()
         robot.set_position(TARGET_POSITIONS[8],  # Moves back for 5 centimeters
                            joint_motion_parameters)
-        robot.await_stop()
-
+        # robot.await_stop()
+        status_await_stop(robot) # Checks arm status
         robot.set_digital_output_high(2)  # Turns on the conveyor
         robot.await_stop(2)
 
@@ -168,4 +182,6 @@ while i <= 1:  # The number of cycles
         failure = robot.status_failure()
         if status == SystemState.EMERGENCY:
             print("Robot is emergency. Error message: {}".format(failure))
+        if status == SystemState.INITIALIZATION_FAILURE:
+            print("Robot is failed to initialize. Error message: {}".format(failure))
         break
